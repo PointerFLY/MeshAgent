@@ -1,6 +1,11 @@
 #!/bin/bash
 
-ETCD_HOST=$(ip addr show docker0 | grep 'inet\b' | awk '{print $2}' | cut -d '/' -f 1)
+if [[ ! -x "$(command -v ip)" ]]; then
+    ETCD_HOST=$(ip addr show docker0 | grep 'inet\b' | awk '{print $2}' | cut -d '/' -f 1)
+else
+    echo "No ip command, assume macOS, use special DNS host.docker.internal instead of docker0"
+    ETCD_HOST=host.docker.internal
+fi
 ETCD_PORT=2379
 ETCD_URL=http://$ETCD_HOST:$ETCD_PORT
 
