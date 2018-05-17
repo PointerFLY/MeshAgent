@@ -65,7 +65,7 @@ start_providers() {
         -m 4g \
         -p 20890:20890 \
         -v $CURRENT_DIR/provider-medium/logs:/root/logs \
-        $IMAGE_NAME provider-small
+        $IMAGE_NAME provider-medium
 
     rm -rf provider-large
     mkdir -p provider-large/logs
