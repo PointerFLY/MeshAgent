@@ -13,10 +13,12 @@ target/
 .classpath
 
 # idea ignore
-.idea/
 *.ipr
 *.iml
 *.iws
+**/.idea/**/libraries
+**/.idea/**/dictionaries
+**/.idea/**/tasks.xml
 
 # temp ignore
 *.log
