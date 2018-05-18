@@ -245,7 +245,7 @@
     <configuration name="provider-large" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
       <module name="mesh-agent" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.alibaba.dubbo.performance.demo.agent.AgentApp" />
-      <option name="VM_PARAMETERS" value="-Xms2560M -Xmx2560M -Dtype=provider -Ddubbo.protocol.port=20891 -Dserver.port=30001 -Detcd.url=http://127.0.0.1:2379 -Dlogs.dir=./logs" />
+      <option name="VM_PARAMETERS" value="-Xms2560M -Xmx2560M -Dtype=provider -Ddubbo.protocol.port=20891 -Dserver.port=30002 -Detcd.url=http://127.0.0.1:2379 -Dlogs.dir=./logs" />
       <option name="ALTERNATIVE_JRE_PATH" />
     </configuration>
     <configuration name="provider-medium" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
