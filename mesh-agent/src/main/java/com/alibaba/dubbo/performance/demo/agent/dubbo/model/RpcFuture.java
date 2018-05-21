@@ -11,8 +11,8 @@ public class RpcFuture implements Future<Object> {
 
     static {
         executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(4);
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(8);
         executor.setThreadNamePrefix("default_task_executor_thread");
         executor.initialize();
     }
