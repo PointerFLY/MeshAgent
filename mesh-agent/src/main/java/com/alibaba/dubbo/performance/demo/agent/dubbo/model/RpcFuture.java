@@ -1,9 +1,25 @@
 package com.alibaba.dubbo.performance.demo.agent.dubbo.model;
 
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
 import java.util.concurrent.*;
 
 public class RpcFuture implements Future<Object> {
+
+    private static ThreadPoolTaskExecutor executor;
+
+    static {
+        executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(1);
+        executor.setMaxPoolSize(4);
+        executor.setThreadNamePrefix("default_task_executor_thread");
+        executor.initialize();
+    }
+
     private CountDownLatch latch = new CountDownLatch(1);
+
+    private Runnable listener;
 
     private RpcResponse response;
 
@@ -34,6 +50,10 @@ public class RpcFuture implements Future<Object> {
         return "Error";
     }
 
+    public void addListener(Runnable listener) {
+        this.listener = listener;
+    }
+
     @Override
     public Object get(long timeout, TimeUnit unit) throws InterruptedException {
         boolean b = latch.await(timeout,unit);
@@ -42,6 +62,11 @@ public class RpcFuture implements Future<Object> {
 
     public void done(RpcResponse response){
         this.response = response;
+        try {
+            executor.execute(listener);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         latch.countDown();
     }
 }

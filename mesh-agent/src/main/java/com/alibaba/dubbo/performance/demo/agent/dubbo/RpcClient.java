@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Callable;
 
 public class RpcClient {
     private Logger logger = LoggerFactory.getLogger(RpcClient.class);
@@ -25,7 +27,12 @@ public class RpcClient {
         this.connectManager = new ConnecManager();
     }
 
-    public Object invoke(String interfaceName, String method, String parameterTypesString, String parameter) throws Exception {
+    @FunctionalInterface
+    public interface RpcCallback {
+        void call(String responseText);
+    }
+
+    public void invoke(RpcCallback callback, String interfaceName, String method, String parameterTypesString, String parameter) throws Exception {
 
         Channel channel = connectManager.getChannel();
 
@@ -50,13 +57,14 @@ public class RpcClient {
         RpcRequestHolder.put(String.valueOf(request.getId()),future);
 
         channel.writeAndFlush(request);
-
-        Object result = null;
-        try {
-            result = future.get();
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        return result;
+        future.addListener(() -> {
+            try {
+                byte[] bytes = (byte[]) future.get();
+                String str = new String(bytes, StandardCharsets.UTF_8);
+                callback.call(str);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 }
