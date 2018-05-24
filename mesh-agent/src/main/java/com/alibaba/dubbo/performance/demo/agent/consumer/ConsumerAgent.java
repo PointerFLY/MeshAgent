@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +30,8 @@ public class ConsumerAgent implements IAgent {
 
     private EtcdManager etcdManager = new EtcdManager();
     private List<InetSocketAddress> endpoints = etcdManager.findServices();
-    private List<Channel> channels = new ArrayList<Channel>();
+    private List<Channel> channels = new ArrayList<>();
+    private EventLoopGroup clientGroup = new NioEventLoopGroup();
 
     @Override
     public void start() {
@@ -38,43 +40,37 @@ public class ConsumerAgent implements IAgent {
     }
 
     private void connectToProviderAgents() {
-        for (InetSocketAddress endpoint: endpoints) {
-            EventLoopGroup group = new NioEventLoopGroup();
-            try {
-                Bootstrap b = new Bootstrap();
-                b.group(group)
-                        .channel(NioSocketChannel.class)
-                        .handler(new ChannelInitializer<SocketChannel>() {
-                            @Override
-                            protected void initChannel(SocketChannel ch) {
-                                ChannelPipeline p = ch.pipeline();
-                                p.addLast(new HttpServerCodec());
-                                p.addLast(new HttpObjectAggregator(Options.HTTP_MAX_CONTENT_LENGTH));
-                                p.addLast(new ConsumerHttpClientHandler());
-                            }
-                        });
-                ChannelFuture f = b.connect(endpoint.getHostName(), endpoint.getPort()).sync();
-                f.channel().closeFuture().addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture future) throws Exception {
-                        LOGGER.error("One channel to provider was closed.");
-                        // TODO: Reconnect logic if closed unexpectedly?
-                    }
+        try {
+            Bootstrap b = new Bootstrap();
+            b.group(clientGroup)
+                    .channel(NioSocketChannel.class)
+                    .handler(new ChannelInitializer<SocketChannel>() {
+                        @Override
+                        protected void initChannel(SocketChannel ch) {
+                            ChannelPipeline p = ch.pipeline();
+                            p.addLast(new HttpServerCodec());
+                            p.addLast(new HttpObjectAggregator(Options.HTTP_MAX_CONTENT_LENGTH));
+                            p.addLast(new ConsumerHttpClientHandler());
+                        }
+                    });
+            for (InetSocketAddress endpoint: endpoints) {
+                ChannelFuture f = b.connect(endpoint).sync();
+                f.channel().closeFuture().addListener((ChannelFuture future) -> {
+                    LOGGER.error("One channel to provider was closed.");
+                    // TODO: Reconnect logic if closed unexpectedly?
                 });
                 channels.add(f.channel());
-            } catch (Exception e) {
-                e.printStackTrace();
-                LOGGER.error("Connect to provider agent failed.");
-                System.exit(1);
-            } finally {
-                group.shutdownGracefully();
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+            LOGGER.error("Connect to provider agent failed.");
+            System.exit(1);
         }
     }
 
     private void startServer() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup(4);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)

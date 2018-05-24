@@ -1,51 +1,55 @@
 package com.alibaba.dubbo.performance.demo.agent.consumer;
 
+import com.alibaba.dubbo.performance.demo.agent.Main;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpRequest;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http.multipart.Attribute;
 import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import io.netty.handler.codec.http.multipart.InterfaceHttpData;
+import org.slf4j.LoggerFactory;
+
+import static io.netty.handler.codec.http.HttpResponseStatus.*;
+import static io.netty.handler.codec.http.HttpVersion.*;
 
 import java.io.IOException;
+import java.util.logging.Logger;
 
-public class ConsumerHttpServerHandler extends ChannelInboundHandlerAdapter {
+public class ConsumerHttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+
+    private static final org.slf4j.Logger LOGGER = LoggerFactory.getLogger(ConsumerHttpServerHandler.class);
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-
+        ctx.flush();
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        FullHttpRequest request = (FullHttpRequest)msg;
+    public void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
         HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(request);
-        InterfaceHttpData data = decoder.getBodyHttpData("interface");
+        InterfaceHttpData data = decoder.getBodyHttpData("parameter");
 
-        if (data.getHttpDataType() == InterfaceHttpData.HttpDataType.Attribute) {
-            Attribute attribute = (Attribute) data;
-            try {
-                String value = attribute.getValue();
-                System.out.println("interface:" + value);
-            } catch (IOException e) {
-
-            }
+        if (data.getHttpDataType() != InterfaceHttpData.HttpDataType.Attribute) {
+            LOGGER.error("Consumer received incorrect http request.");
         }
 
-        HttpRequest req = (HttpRequest) msg;
-//
-//        boolean keepAlive = HttpUtil.isKeepAlive(req);
-//        FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(CONTENT));
-//        response.headers().set(CONTENT_TYPE, "text/plain");
-//        response.headers().setInt(CONTENT_LENGTH, response.content().readableBytes());
-//
-//        if (!keepAlive) {
-//            ctx.write(response).addListener(ChannelFutureListener.CLOSE);
-//        } else {
-//            response.headers().set(CONNECTION, KEEP_ALIVE);
-//            ctx.write(response);
-//        }
+        String paramStr = null;
+        Attribute attribute = (Attribute)data;
+        try {
+            paramStr = attribute.getValue();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        String hashStr = String.valueOf(paramStr.hashCode());
+        FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(hashStr.getBytes()));
+        response.headers().set("Content-Type", "text/plain");
+        response.headers().setInt("Content-Length", response.content().readableBytes());
+        response.headers().set("Connection", "Keep-Alive");
+        ctx.write(response);
     }
 
     @Override

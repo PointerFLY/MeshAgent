@@ -82,8 +82,7 @@ public class EtcdManager {
         }
 
         if (endpoints.size() == 0) {
-            LOGGER.error("Endpoint is empty, check provider service registry.");
-            System.exit(1);
+            LOGGER.error("Endpoints are empty, check provider service registry.");
         }
 
         return endpoints;

@@ -2,8 +2,10 @@ package com.alibaba.dubbo.performance.demo.agent.provider;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.FullHttpRequest;
 
-public class ProviderHttpServerHandler extends ChannelInboundHandlerAdapter {
+public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
@@ -11,8 +13,8 @@ public class ProviderHttpServerHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-        ctx.channel().writeAndFlush(msg);
+    public void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
+        ctx.channel().writeAndFlush(request);
 
     }
 
