@@ -19,6 +19,7 @@ target/
 **/.idea/**/libraries
 **/.idea/**/dictionaries
 **/.idea/**/tasks.xml
+**/.idea/**/uiDesigner.xml
 
 # temp ignore
 *.log
