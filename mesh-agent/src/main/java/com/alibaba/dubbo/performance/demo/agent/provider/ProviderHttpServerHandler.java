@@ -1,9 +1,9 @@
-package com.pointerfly.agent.provider;
+package com.alibaba.dubbo.performance.demo.agent.provider;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 
-public class ProviderHttpHandler extends ChannelInboundHandlerAdapter {
+public class ProviderHttpServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {

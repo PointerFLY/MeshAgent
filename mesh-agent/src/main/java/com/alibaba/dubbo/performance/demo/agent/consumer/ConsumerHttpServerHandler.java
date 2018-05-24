@@ -1,4 +1,4 @@
-package com.pointerfly.agent.consumer;
+package com.alibaba.dubbo.performance.demo.agent.consumer;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -10,7 +10,7 @@ import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 
 import java.io.IOException;
 
-public class ConsumerHttpHandler extends ChannelInboundHandlerAdapter {
+public class ConsumerHttpServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {

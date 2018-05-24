@@ -1,7 +1,7 @@
-package com.pointerfly.agent;
+package com.alibaba.dubbo.performance.demo.agent;
 
-import com.pointerfly.agent.consumer.ConsumerAgent;
-import com.pointerfly.agent.provider.ProviderAgent;
+import com.alibaba.dubbo.performance.demo.agent.consumer.ConsumerAgent;
+import com.alibaba.dubbo.performance.demo.agent.provider.ProviderAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

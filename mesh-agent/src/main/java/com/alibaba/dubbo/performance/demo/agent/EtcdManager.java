@@ -1,4 +1,4 @@
-package com.pointerfly.agent;
+package com.alibaba.dubbo.performance.demo.agent;
 
 import com.coreos.jetcd.Client;
 import com.coreos.jetcd.KV;
@@ -33,6 +33,7 @@ public class EtcdManager {
             leaseId = leaseClient.grant(30).get().getID();
         } catch (Exception e) {
             e.printStackTrace();
+            LOGGER.error("Get lease from etcd failed.");
             System.exit(1);
         }
         leaseClient.keepAlive(leaseId);
@@ -50,6 +51,7 @@ public class EtcdManager {
             LOGGER.info("Register a new service at:" + strKey);
         } catch (Exception e) {
             e.printStackTrace();
+            LOGGER.error("Failed to register etcd service.");
             System.exit(1);
         }
     }
@@ -62,6 +64,7 @@ public class EtcdManager {
             response = kvClient.get(prefix, GetOption.newBuilder().withPrefix(prefix).build()).get();
         } catch (Exception e) {
             e.printStackTrace();
+            LOGGER.error("Fail to find service from etcd.");
             System.exit(1);
         }
 
