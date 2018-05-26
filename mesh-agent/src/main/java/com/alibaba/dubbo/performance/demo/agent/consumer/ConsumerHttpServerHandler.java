@@ -59,13 +59,6 @@ public class ConsumerHttpServerHandler extends SimpleChannelInboundHandler<FullH
 
     @Override
     public void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
-        HttpPostRequestDecoder decoder = new HttpPostRequestDecoder(request);
-        InterfaceHttpData data = decoder.getBodyHttpData("parameter");
-
-        if (data.getHttpDataType() != InterfaceHttpData.HttpDataType.Attribute) {
-            LOGGER.error("Consumer received incorrect http request.");
-        }
-
         handler.handle(request, ctx.channel());
     }
 
