@@ -1,13 +1,9 @@
 package com.alibaba.dubbo.performance.demo.agent.consumer;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.channel.*;
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.util.ReferenceCountUtil;
 
+@ChannelHandler.Sharable
 public class ConsumerHttpClientHandler extends SimpleChannelInboundHandler<FullHttpResponse> {
 
     private ReadNewResponseHandler handler;

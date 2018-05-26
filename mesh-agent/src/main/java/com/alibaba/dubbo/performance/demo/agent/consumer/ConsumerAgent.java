@@ -37,6 +37,7 @@ public class ConsumerAgent implements IAgent {
     private static final String REQUEST_ID_KEY = "request-id";
 
     private EtcdManager etcdManager = new EtcdManager();
+    List<InetSocketAddress> endpoints = etcdManager.findServices();
     private List<Channel> clientChannels = new ArrayList<>();
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup();
@@ -49,12 +50,15 @@ public class ConsumerAgent implements IAgent {
     @Override
     public void start() {
         serverHandler.setReadNewRequestHandler((request, channel) -> {
+            int index = random.nextInt(clientChannels.size());
+            Channel clientChannel = clientChannels.get(index);
+            InetSocketAddress endpoint = endpoints.get(index);
+            request.headers().set("host", endpoint.getHostString() + ":" + endpoint.getPort());
+
             long requestId = atomicLong.getAndIncrement();
             request.headers().set(REQUEST_ID_KEY, requestId);
-            request.headers().set("host", "127.0.0.1:30002");
             map.put(String.valueOf(requestId), channel);
 
-            Channel clientChannel = clientChannels.get(random.nextInt(clientChannels.size()));
             ReferenceCountUtil.retain(request);
             clientChannel.writeAndFlush(request);
         });
@@ -84,7 +88,6 @@ public class ConsumerAgent implements IAgent {
                         }
                     });
 
-            List<InetSocketAddress> endpoints = etcdManager.findServices();
             for (InetSocketAddress endpoint: endpoints) {
                 ChannelFuture f = b.connect(endpoint).sync();
                 f.channel().closeFuture().addListener((future) -> {
