@@ -11,30 +11,60 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.naming.Reference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ConsumerAgent implements IAgent {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerAgent.class);
+    private static final String REQUEST_ID_KEY = "request-id";
 
     private EtcdManager etcdManager = new EtcdManager();
-    private List<InetSocketAddress> endpoints = etcdManager.findServices();
-    private List<Channel> channels = new ArrayList<>();
+    private List<Channel> clientChannels = new ArrayList<>();
+    private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup();
+    private Random random = new Random();
+    private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
+    private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
+    private AtomicLong atomicLong = new AtomicLong();
+    private ConcurrentHashMap<String, Channel> map = new ConcurrentHashMap<>();
 
     @Override
     public void start() {
+        serverHandler.setReadNewRequestHandler((request, channel) -> {
+            long requestId = atomicLong.getAndIncrement();
+            request.headers().set(REQUEST_ID_KEY, requestId);
+            request.headers().set("host", "127.0.0.1:30002");
+            map.put(String.valueOf(requestId), channel);
+
+            Channel clientChannel = clientChannels.get(random.nextInt(clientChannels.size()));
+            ReferenceCountUtil.retain(request);
+            clientChannel.writeAndFlush(request);
+        });
+        clientHandler.setReadNewResponseHandler((response) -> {
+            String id = response.headers().get(REQUEST_ID_KEY);
+            Channel channel = map.get(id);
+            ReferenceCountUtil.retain(response);
+            channel.writeAndFlush(response);
+        });
+
         connectToProviderAgents();
         startServer();
     }
@@ -48,18 +78,20 @@ public class ConsumerAgent implements IAgent {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ChannelPipeline p = ch.pipeline();
-                            p.addLast(new HttpServerCodec());
+                            p.addLast(new HttpClientCodec());
                             p.addLast(new HttpObjectAggregator(Options.HTTP_MAX_CONTENT_LENGTH));
-                            p.addLast(new ConsumerHttpClientHandler());
+                            p.addLast(clientHandler);
                         }
                     });
+
+            List<InetSocketAddress> endpoints = etcdManager.findServices();
             for (InetSocketAddress endpoint: endpoints) {
                 ChannelFuture f = b.connect(endpoint).sync();
-                f.channel().closeFuture().addListener((ChannelFuture future) -> {
-                    LOGGER.error("One channel to provider was closed.");
+                f.channel().closeFuture().addListener((future) -> {
+                    LOGGER.error("One channel to provider closed: " + future.cause().toString());;
                     // TODO: Reconnect logic if closed unexpectedly?
                 });
-                channels.add(f.channel());
+                clientChannels.add(f.channel());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -70,7 +102,7 @@ public class ConsumerAgent implements IAgent {
 
     private void startServer() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup(4);
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
@@ -82,7 +114,7 @@ public class ConsumerAgent implements IAgent {
                             ChannelPipeline p = ch.pipeline();
                             p.addLast(new HttpServerCodec());
                             p.addLast(new HttpObjectAggregator(Options.HTTP_MAX_CONTENT_LENGTH));
-                            p.addLast(new ConsumerHttpServerHandler());
+                            p.addLast(serverHandler);
                         }
                     });
 
