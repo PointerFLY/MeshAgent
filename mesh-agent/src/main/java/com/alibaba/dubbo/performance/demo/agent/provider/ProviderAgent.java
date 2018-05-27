@@ -46,7 +46,7 @@ public class ProviderAgent implements IAgent {
     private ProviderDubboClientHandler clientHandler = new ProviderDubboClientHandler();
     private Channel clientChannel;
     private Channel serverChannel() { return serverHandler.getChannel(); }
-    private EventLoopGroup clientGroup = new NioEventLoopGroup();
+    private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
 
     @Override
     public void start() {
@@ -125,7 +125,7 @@ public class ProviderAgent implements IAgent {
 
     private void startServer() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)

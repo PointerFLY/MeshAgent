@@ -35,7 +35,7 @@ public class ConsumerAgent implements IAgent {
     private List<InetSocketAddress> endpoints = etcdManager.findServices();
     private List<Channel> clientChannels = new ArrayList<>();
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
-    private EventLoopGroup clientGroup = new NioEventLoopGroup();
+    private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
     private Random random = new Random();
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
@@ -104,7 +104,7 @@ public class ConsumerAgent implements IAgent {
 
     private void startServer() {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
