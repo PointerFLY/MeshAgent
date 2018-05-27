@@ -74,6 +74,7 @@ public class ProviderAgent implements IAgent {
             }
 
             Request dubboRequest = new Request();
+            dubboRequest.setId(request.headers().getInt("request-id"));
             dubboRequest.setVersion("2.0.0");
             dubboRequest.setTwoWay(true);
             dubboRequest.setData(invocation);

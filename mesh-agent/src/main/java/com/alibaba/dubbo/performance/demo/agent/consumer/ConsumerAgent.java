@@ -32,7 +32,7 @@ public class ConsumerAgent implements IAgent {
     private static final String REQUEST_ID_KEY = "request-id";
 
     private EtcdManager etcdManager = new EtcdManager();
-    List<InetSocketAddress> endpoints = etcdManager.findServices();
+    private List<InetSocketAddress> endpoints = etcdManager.findServices();
     private List<Channel> clientChannels = new ArrayList<>();
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup();
@@ -62,6 +62,7 @@ public class ConsumerAgent implements IAgent {
             Channel channel = map.get(requestId);
             ReferenceCountUtil.retain(response);
             channel.writeAndFlush(response);
+            map.remove(requestId);
         });
 
         connectToProviderAgents();
