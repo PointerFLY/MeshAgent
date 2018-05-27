@@ -21,4 +21,10 @@ public class ConsumerHttpClientHandler extends SimpleChannelInboundHandler<FullH
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpResponse response) {
         handler.handle(response);
     }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        cause.printStackTrace();
+        ctx.close();
+    }
 }

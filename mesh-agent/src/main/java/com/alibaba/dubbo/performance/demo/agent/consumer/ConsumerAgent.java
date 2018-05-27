@@ -1,9 +1,8 @@
 package com.alibaba.dubbo.performance.demo.agent.consumer;
 
+import com.alibaba.dubbo.performance.demo.agent.EtcdManager;
 import com.alibaba.dubbo.performance.demo.agent.IAgent;
 import com.alibaba.dubbo.performance.demo.agent.Options;
-import com.alibaba.dubbo.performance.demo.agent.EtcdManager;
-import com.alibaba.dubbo.performance.demo.agent.Main;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -11,7 +10,6 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -21,15 +19,12 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.naming.Reference;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ConsumerAgent implements IAgent {
 
@@ -44,8 +39,8 @@ public class ConsumerAgent implements IAgent {
     private Random random = new Random();
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
-    private AtomicLong atomicLong = new AtomicLong();
-    private ConcurrentHashMap<String, Channel> map = new ConcurrentHashMap<>();
+    private AtomicInteger atomicInteger = new AtomicInteger();
+    private ConcurrentHashMap<Integer, Channel> map = new ConcurrentHashMap<>();
 
     @Override
     public void start() {
@@ -55,16 +50,16 @@ public class ConsumerAgent implements IAgent {
             InetSocketAddress endpoint = endpoints.get(index);
             request.headers().set("host", endpoint.getHostString() + ":" + endpoint.getPort());
 
-            long requestId = atomicLong.getAndIncrement();
+            int requestId = atomicInteger.getAndIncrement();
             request.headers().set(REQUEST_ID_KEY, requestId);
-            map.put(String.valueOf(requestId), channel);
+            map.put(requestId, channel);
 
             ReferenceCountUtil.retain(request);
             clientChannel.writeAndFlush(request);
         });
         clientHandler.setReadNewResponseHandler((response) -> {
-            String id = response.headers().get(REQUEST_ID_KEY);
-            Channel channel = map.get(id);
+            int requestId = Integer.valueOf(response.headers().get(REQUEST_ID_KEY));
+            Channel channel = map.get(requestId);
             ReferenceCountUtil.retain(response);
             channel.writeAndFlush(response);
         });
@@ -72,6 +67,8 @@ public class ConsumerAgent implements IAgent {
         connectToProviderAgents();
         startServer();
     }
+
+    private int count = 0;
 
     private void connectToProviderAgents() {
         try {
@@ -90,8 +87,9 @@ public class ConsumerAgent implements IAgent {
 
             for (InetSocketAddress endpoint: endpoints) {
                 ChannelFuture f = b.connect(endpoint).sync();
-                f.channel().closeFuture().addListener((future) -> {
-                    LOGGER.error("One channel to provider closed: " + future.cause().toString());;
+                f.channel().closeFuture().addListener(future -> {
+                    LOGGER.error("One channel to provider closed: " + future.cause().toString());
+                    System.exit(1);
                     // TODO: Reconnect logic if closed unexpectedly?
                 });
                 clientChannels.add(f.channel());

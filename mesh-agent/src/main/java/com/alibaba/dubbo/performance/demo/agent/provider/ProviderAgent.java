@@ -1,9 +1,8 @@
 package com.alibaba.dubbo.performance.demo.agent.provider;
 
-import com.alibaba.dubbo.performance.demo.agent.IAgent;
-import com.alibaba.dubbo.performance.demo.agent.Main;
-import com.alibaba.dubbo.performance.demo.agent.Options;
 import com.alibaba.dubbo.performance.demo.agent.EtcdManager;
+import com.alibaba.dubbo.performance.demo.agent.IAgent;
+import com.alibaba.dubbo.performance.demo.agent.Options;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.DubboRpcDecoder;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.DubboRpcEncoder;
 import com.alibaba.dubbo.performance.demo.agent.dubbo.model.JsonUtils;
@@ -17,26 +16,22 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.multipart.Attribute;
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
 import io.netty.handler.codec.http.multipart.HttpPostStandardRequestDecoder;
-import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Attr;
 
-import javax.imageio.IIOException;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -74,6 +69,8 @@ public class ProviderAgent implements IAgent {
             } catch (IOException e) {
                 e.printStackTrace();
                 System.exit(1);
+            } finally {
+                decoder.destroy();
             }
 
             Request dubboRequest = new Request();
@@ -87,13 +84,8 @@ public class ProviderAgent implements IAgent {
             FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(response.getBytes()));
             httpResponse.headers().set("content-type", "text/plain");
             httpResponse.headers().setInt("content-length", httpResponse.content().readableBytes());
-            LOGGER.info(new String(response.getBytes()));
-            String bytes = new String(response.getBytes());
             httpResponse.headers().set("request-id", response.getRequestId());
-            ChannelFuture f = serverChannel().writeAndFlush(httpResponse);
-            f.addListener(future -> {
-                LOGGER.error(future.cause().toString());
-            });
+            serverChannel().writeAndFlush(httpResponse);
         });
 
         connectToProvider();

@@ -1,24 +1,14 @@
 package com.alibaba.dubbo.performance.demo.agent.provider;
 
-import com.alibaba.dubbo.performance.demo.agent.consumer.ConsumerHttpServerHandler;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.*;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.multipart.Attribute;
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
-import io.netty.handler.codec.http.multipart.InterfaceHttpData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
-
+@ChannelHandler.Sharable
 public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     @FunctionalInterface
@@ -41,13 +31,8 @@ public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullH
     private static final Logger LOGGER = LoggerFactory.getLogger(ProviderHttpServerHandler.class);
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
+    public void channelActive(ChannelHandlerContext ctx) {
         channel = ctx.channel();
-    }
-
-    @Override
-    public void channelReadComplete(ChannelHandlerContext ctx) {
-        ctx.flush();
     }
 
     @Override
