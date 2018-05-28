@@ -41,7 +41,7 @@ public class EtcdManager {
 
     public void registerService() {
         try {
-            String port = System.getProperty("server.port");
+            String port = String.valueOf(Options.SERVER_PORT);
             String hostIp = InetAddress.getLocalHost().getHostAddress();
             String strKey = String.format("/%s/%s/%s:%s", ROOT_PATH, SERVICE_NAME, hostIp, port);
             ByteSequence key = ByteSequence.fromString(strKey);

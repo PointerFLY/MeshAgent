@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ConsumerAgent implements IAgent {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerAgent.class);
-    private static final String REQUEST_ID_KEY = "request-id";
 
     private EtcdManager etcdManager = new EtcdManager();
     private List<InetSocketAddress> endpoints = etcdManager.findServices();
@@ -51,14 +50,14 @@ public class ConsumerAgent implements IAgent {
             request.headers().set("host", endpoint.getHostString() + ":" + endpoint.getPort());
 
             int requestId = atomicInteger.getAndIncrement();
-            request.headers().set(REQUEST_ID_KEY, requestId);
+            request.headers().set(Options.REQUEST_ID_KEY, requestId);
             map.put(requestId, channel);
 
             ReferenceCountUtil.retain(request);
             clientChannel.writeAndFlush(request);
         });
         clientHandler.setReadNewResponseHandler((response) -> {
-            int requestId = Integer.valueOf(response.headers().get(REQUEST_ID_KEY));
+            int requestId = Integer.valueOf(response.headers().get(Options.REQUEST_ID_KEY));
             Channel channel = map.get(requestId);
             ReferenceCountUtil.retain(response);
             channel.writeAndFlush(response);

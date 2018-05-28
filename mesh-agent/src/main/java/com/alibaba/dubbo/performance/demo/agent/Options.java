@@ -8,6 +8,7 @@ public class Options {
     public static final String ETCD_URL = System.getProperty("etcd.url");
 
     public static final int HTTP_MAX_CONTENT_LENGTH = 65536;
+    public static final String REQUEST_ID_KEY = "request-id";
 
     static {
         String strPort = System.getProperty("dubbo.protocol.port");

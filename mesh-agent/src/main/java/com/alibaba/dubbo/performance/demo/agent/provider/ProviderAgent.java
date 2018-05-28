@@ -31,7 +31,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -39,7 +38,6 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 public class ProviderAgent implements IAgent {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ProviderAgent.class);
-    private static final String REQUEST_ID_KEY = "request-id";
 
     private EtcdManager etcdManager = new EtcdManager();
     private ProviderHttpServerHandler serverHandler = new ProviderHttpServerHandler();
@@ -74,7 +72,7 @@ public class ProviderAgent implements IAgent {
             }
 
             Request dubboRequest = new Request();
-            dubboRequest.setId(request.headers().getInt("request-id"));
+            dubboRequest.setId(request.headers().getInt(Options.REQUEST_ID_KEY));
             dubboRequest.setVersion("2.0.0");
             dubboRequest.setTwoWay(true);
             dubboRequest.setData(invocation);
@@ -85,7 +83,7 @@ public class ProviderAgent implements IAgent {
             FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(response.getBytes()));
             httpResponse.headers().set("content-type", "text/plain");
             httpResponse.headers().setInt("content-length", httpResponse.content().readableBytes());
-            httpResponse.headers().set("request-id", response.getRequestId());
+            httpResponse.headers().set(Options.REQUEST_ID_KEY, response.getRequestId());
             serverChannel().writeAndFlush(httpResponse);
         });
 
@@ -107,13 +105,10 @@ public class ProviderAgent implements IAgent {
                             p.addLast(clientHandler);
                         }
                     });
-            ChannelFuture f = b.connect(InetAddress.getLocalHost().getHostAddress(), Options.PROVIDER_PORT).sync();
-            f.channel().closeFuture().addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
+            ChannelFuture f = b.connect("127.0.0.1", Options.PROVIDER_PORT).sync();
+            f.channel().closeFuture().addListener(future ->  {
                     LOGGER.error("One channel to provider was closed.");
                     // TODO: Reconnect logic if closed unexpectedly?
-                }
             });
             clientChannel = f.channel();
         } catch (Exception e) {
