@@ -107,13 +107,13 @@ public class ProviderAgent implements IAgent {
                     });
             ChannelFuture f = b.connect("127.0.0.1", Options.PROVIDER_PORT).sync();
             f.channel().closeFuture().addListener(future ->  {
-                    LOGGER.error("One channel to provider was closed.");
+                    LOGGER.error("One channel to provider was closed:" + f.cause().toString());
                     // TODO: Reconnect logic if closed unexpectedly?
             });
             clientChannel = f.channel();
         } catch (Exception e) {
             e.printStackTrace();
-            LOGGER.error("Connect to provider failed");
+            LOGGER.error("Connect to provider failed:" + "127.0.0.1:" + Options.PROVIDER_PORT);
             System.exit(1);
         }
     }
