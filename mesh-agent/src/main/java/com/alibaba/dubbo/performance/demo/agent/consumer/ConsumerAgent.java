@@ -32,7 +32,7 @@ public class ConsumerAgent implements IAgent {
 
     private EtcdManager etcdManager = new EtcdManager();
     private List<InetSocketAddress> endpoints = etcdManager.findServices();
-    private List<Channel> clientChannels = new ArrayList<>();
+    private List<Channel> clientChannels;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
     private Random random = new Random();
@@ -40,10 +40,13 @@ public class ConsumerAgent implements IAgent {
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private AtomicInteger atomicInteger = new AtomicInteger();
     private ConcurrentHashMap<Integer, Channel> map = new ConcurrentHashMap<>();
+    private final Object lock = new Object();
 
     @Override
     public void start() {
         serverHandler.setReadNewRequestHandler((request, channel) -> {
+            connectToProviderAgentsIfNeeded();
+
             int index = random.nextInt(clientChannels.size());
             Channel clientChannel = clientChannels.get(index);
             InetSocketAddress endpoint = endpoints.get(index);
@@ -64,11 +67,18 @@ public class ConsumerAgent implements IAgent {
             map.remove(requestId);
         });
 
-        connectToProviderAgents();
         startServer();
     }
 
-    private int count = 0;
+    private void connectToProviderAgentsIfNeeded() {
+        if (clientChannels == null) {
+            synchronized (lock) {
+                if (clientChannels == null) {
+                    connectToProviderAgents();
+                }
+            }
+        }
+    }
 
     private void connectToProviderAgents() {
         try {
@@ -85,6 +95,7 @@ public class ConsumerAgent implements IAgent {
                         }
                     });
 
+            clientChannels = new ArrayList<>();
             for (InetSocketAddress endpoint: endpoints) {
                 ChannelFuture f = b.connect(endpoint).sync();
                 f.channel().closeFuture().addListener(future -> {

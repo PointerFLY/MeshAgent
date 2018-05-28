@@ -45,10 +45,13 @@ public class ProviderAgent implements IAgent {
     private Channel clientChannel;
     private Channel serverChannel() { return serverHandler.getChannel(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
+    private final Object lock = new Object();
 
     @Override
     public void start() {
         serverHandler.setReadNewRequestHandler((request, channel) -> {
+            connectToProviderIfNeeded();
+
             HttpPostStandardRequestDecoder decoder = new HttpPostStandardRequestDecoder(request);
             Attribute methodAttr = (Attribute)decoder.getBodyHttpData("method");
             Attribute interfaceAttr = (Attribute)decoder.getBodyHttpData("interface");
@@ -87,8 +90,17 @@ public class ProviderAgent implements IAgent {
             serverChannel().writeAndFlush(httpResponse);
         });
 
-        connectToProvider();
         startServer();
+    }
+
+    private void connectToProviderIfNeeded() {
+        if (clientChannel == null) {
+            synchronized (lock) {
+                if (clientChannel == null) {
+                    connectToProvider();
+                }
+            }
+        }
     }
 
     private void connectToProvider() {
