@@ -3,6 +3,7 @@ package com.alibaba.dubbo.performance.demo.agent.consumer;
 import com.alibaba.dubbo.performance.demo.agent.Endpoint;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,7 +26,10 @@ public class LoadBalance {
 
     public int nextIndex() {
         cursor++;
-        cursor %= roundIndices.size();
+        if (cursor == roundIndices.size()) {
+            cursor = 0;
+            Collections.shuffle(roundIndices);
+        }
         return roundIndices.get(cursor);
     }
 }
