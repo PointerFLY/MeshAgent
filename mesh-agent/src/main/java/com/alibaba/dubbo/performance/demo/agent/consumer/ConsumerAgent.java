@@ -20,12 +20,10 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
 
 public class ConsumerAgent implements IAgent {
 
@@ -38,8 +36,8 @@ public class ConsumerAgent implements IAgent {
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
-    private AtomicInteger atomicInteger = new AtomicInteger();
-    private ConcurrentHashMap<Integer, Channel> map = new ConcurrentHashMap<>();
+    private int requestId = 0;
+    private Map<Integer, Channel> map = new HashMap<>();
     private final Object lock = new Object();
     private LoadBalance loadBalance = new LoadBalance(endpoints);
 
@@ -50,22 +48,20 @@ public class ConsumerAgent implements IAgent {
 
             int index = loadBalance.nextIndex();
             Channel clientChannel = clientChannels.get(index);
-            Endpoint endpoint = endpoints.get(index);
-            request.headers().set("host", endpoint.getHost() + ":" + endpoint.getPort());
 
-            int requestId = atomicInteger.getAndIncrement();
             request.headers().set(Options.REQUEST_ID_KEY, requestId);
             map.put(requestId, channel);
+            requestId += 1;
 
             ReferenceCountUtil.retain(request);
             clientChannel.writeAndFlush(request);
         });
         clientHandler.setReadNewResponseHandler((response) -> {
-            int requestId = Integer.valueOf(response.headers().get(Options.REQUEST_ID_KEY));
+            int requestId = response.headers().getInt(Options.REQUEST_ID_KEY);
             Channel channel = map.get(requestId);
+            map.remove(requestId);
             ReferenceCountUtil.retain(response);
             channel.writeAndFlush(response);
-            map.remove(requestId);
         });
 
         startServer();
