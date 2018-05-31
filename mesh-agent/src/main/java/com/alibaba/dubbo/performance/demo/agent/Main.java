@@ -5,9 +5,6 @@ import com.alibaba.dubbo.performance.demo.agent.provider.ProviderAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.text.html.Option;
-import java.util.HashMap;
-
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);

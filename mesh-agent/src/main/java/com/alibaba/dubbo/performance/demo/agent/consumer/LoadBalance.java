@@ -2,21 +2,30 @@ package com.alibaba.dubbo.performance.demo.agent.consumer;
 
 import com.alibaba.dubbo.performance.demo.agent.Endpoint;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 public class LoadBalance {
 
-    private List<Integer> weights;
-    private Random random = new Random();
+    private final List<Integer> weights;
+    private List<Integer> roundIndices = new ArrayList<>();
+    private int cursor = 0;
 
-    LoadBalance(List<Endpoint> endpoints) {
+    public LoadBalance(List<Endpoint> endpoints) {
         weights = endpoints.stream().map(Endpoint::getWeight).collect(Collectors.toList());
+        for (int i = 0; i < weights.size(); i++) {
+            int weight = weights.get(i);
+            do {
+                roundIndices.add(i);
+                weight--;
+            } while (weight > 0);
+        }
     }
 
     public int nextIndex() {
-        int index = random.nextInt(weights.size());
-        return index;
+        cursor++;
+        cursor %= roundIndices.size();
+        return roundIndices.get(cursor);
     }
 }
