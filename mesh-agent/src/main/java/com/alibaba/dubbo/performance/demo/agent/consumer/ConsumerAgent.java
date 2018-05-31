@@ -82,6 +82,7 @@ public class ConsumerAgent implements IAgent {
             Bootstrap b = new Bootstrap();
             b.group(clientGroup)
                     .channel(NioSocketChannel.class)
+                    .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {

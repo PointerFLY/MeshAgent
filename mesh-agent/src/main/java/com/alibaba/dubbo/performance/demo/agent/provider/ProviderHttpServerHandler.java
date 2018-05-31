@@ -16,6 +16,8 @@ public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullH
         void handle(FullHttpRequest request, Channel channel);
     }
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProviderHttpServerHandler.class);
+
     private ReadNewRequestHandler handler;
 
     private Channel channel;
@@ -27,8 +29,6 @@ public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullH
     public Channel getChannel() {
         return channel;
     }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProviderHttpServerHandler.class);
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
