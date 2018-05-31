@@ -1,5 +1,6 @@
 package com.alibaba.dubbo.performance.demo.agent.consumer;
 
+import com.alibaba.dubbo.performance.demo.agent.Endpoint;
 import com.alibaba.dubbo.performance.demo.agent.EtcdManager;
 import com.alibaba.dubbo.performance.demo.agent.IAgent;
 import com.alibaba.dubbo.performance.demo.agent.Options;
@@ -31,26 +32,26 @@ public class ConsumerAgent implements IAgent {
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerAgent.class);
 
     private EtcdManager etcdManager = new EtcdManager();
-    private List<InetSocketAddress> endpoints = etcdManager.findServices();
     private List<Channel> clientChannels;
+    private List<Endpoint> endpoints = etcdManager.findServices();
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
-    private Random random = new Random();
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private AtomicInteger atomicInteger = new AtomicInteger();
     private ConcurrentHashMap<Integer, Channel> map = new ConcurrentHashMap<>();
     private final Object lock = new Object();
+    private LoadBalance loadBalance = new LoadBalance(endpoints);
 
     @Override
     public void start() {
         serverHandler.setReadNewRequestHandler((request, channel) -> {
             connectToProviderAgentsIfNeeded();
 
-            int index = random.nextInt(clientChannels.size());
+            int index = loadBalance.nextIndex();
             Channel clientChannel = clientChannels.get(index);
-            InetSocketAddress endpoint = endpoints.get(index);
-            request.headers().set("host", endpoint.getHostString() + ":" + endpoint.getPort());
+            Endpoint endpoint = endpoints.get(index);
+            request.headers().set("host", endpoint.getHost() + ":" + endpoint.getPort());
 
             int requestId = atomicInteger.getAndIncrement();
             request.headers().set(Options.REQUEST_ID_KEY, requestId);
@@ -96,8 +97,8 @@ public class ConsumerAgent implements IAgent {
                     });
 
             clientChannels = new ArrayList<>();
-            for (InetSocketAddress endpoint: endpoints) {
-                ChannelFuture f = b.connect(endpoint).sync();
+            for (Endpoint endpoint: endpoints) {
+                ChannelFuture f = b.connect(endpoint.getHost(), endpoint.getPort()).sync();
                 f.channel().closeFuture().addListener(future -> {
                     LOGGER.error("One channel to provider closed: " + future.cause().toString());
                     System.exit(1);

@@ -22,7 +22,7 @@ elif [[ "$1" == "provider-small" ]]; then
   java -jar \
        -Xms512M \
        -Xmx512M \
-       -Dtype=provider \
+       -Dtype=$1 \
        -Ddubbo.protocol.port=20880 \
        -Dserver.port=30000 \
        -Detcd.url=$ETCD_URL \
@@ -33,7 +33,7 @@ elif [[ "$1" == "provider-medium" ]]; then
   java -jar \
        -Xms1536M \
        -Xmx1536M \
-       -Dtype=provider \
+       -Dtype=$1 \
        -Ddubbo.protocol.port=20880 \
        -Dserver.port=30000 \
        -Detcd.url=$ETCD_URL \
@@ -44,7 +44,7 @@ elif [[ "$1" == "provider-large" ]]; then
   java -jar \
        -Xms2560M \
        -Xmx2560M \
-       -Dtype=provider \
+       -Dtype=$1 \
        -Ddubbo.protocol.port=20880 \
        -Dserver.port=30000 \
        -Detcd.url=$ETCD_URL \

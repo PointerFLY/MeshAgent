@@ -39,13 +39,13 @@ public class EtcdManager {
         leaseClient.keepAlive(leaseId);
     }
 
-    public void registerService() {
+    public void registerService(int weight) {
         try {
             String port = String.valueOf(Options.SERVER_PORT);
             String hostIp = InetAddress.getLocalHost().getHostAddress();
             String strKey = String.format("/%s/%s/%s:%s", ROOT_PATH, SERVICE_NAME, hostIp, port);
             ByteSequence key = ByteSequence.fromString(strKey);
-            ByteSequence value = ByteSequence.fromString("");
+            ByteSequence value = ByteSequence.fromString(String.valueOf(weight));
 
             kvClient.put(key, value, PutOption.newBuilder().withLeaseId(leaseId).build()).get();
             LOGGER.info("Register a new service at:" + strKey);
@@ -56,7 +56,7 @@ public class EtcdManager {
         }
     }
 
-    public List<InetSocketAddress> findServices() {
+    public List<Endpoint> findServices() {
         String strPrefix = String.format("/%s/%s", ROOT_PATH, SERVICE_NAME);
         ByteSequence prefix = ByteSequence.fromString(strPrefix);
         GetResponse response = null;
@@ -68,17 +68,18 @@ public class EtcdManager {
             System.exit(1);
         }
 
-        List<InetSocketAddress> endpoints = new ArrayList<>();
+        List<Endpoint> endpoints = new ArrayList<>();
         for (com.coreos.jetcd.data.KeyValue kv: response.getKvs()) {
             String strKey = kv.getKey().toStringUtf8();
             int index = strKey.lastIndexOf("/");
             String strEndpoint = strKey.substring(index + 1, strKey.length());
-
             String[] splits = strEndpoint.split(":");
+
             String host = splits[0];
             int port = Integer.valueOf(splits[1]);
+            int weight = Integer.valueOf(kv.getValue().toStringUtf8());
 
-            endpoints.add(new InetSocketAddress(host, port));
+            endpoints.add(new Endpoint(host, port, weight));
         }
 
         if (endpoints.size() == 0) {

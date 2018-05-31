@@ -46,6 +46,11 @@ public class ProviderAgent implements IAgent {
     private Channel serverChannel() { return serverHandler.getChannel(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
     private final Object lock = new Object();
+    private int weight;
+
+    public ProviderAgent(int weight) {
+        this.weight = weight;
+    }
 
     @Override
     public void start() {
@@ -148,7 +153,7 @@ public class ProviderAgent implements IAgent {
                         }
                     });
             Channel channel = b.bind(Options.SERVER_PORT).sync().channel();
-            etcdManager.registerService();
+            etcdManager.registerService(weight);
             channel.closeFuture().sync();
         } catch (InterruptedException e) {
             e.printStackTrace();

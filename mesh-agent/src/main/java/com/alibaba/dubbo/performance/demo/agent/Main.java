@@ -5,6 +5,9 @@ import com.alibaba.dubbo.performance.demo.agent.provider.ProviderAgent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.text.html.Option;
+import java.util.HashMap;
+
 public class Main {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
@@ -12,8 +15,14 @@ public class Main {
     public static void main(String[] args) {
         IAgent agent = null;
         switch (Options.AGENT_TYPE) {
-            case "provider":
-                agent = new ProviderAgent();
+            case "provider-small":
+                agent = new ProviderAgent(1);
+                break;
+            case "provider-medium":
+                agent = new ProviderAgent(2);
+                break;
+            case "provider-large":
+                agent = new ProviderAgent(3);
                 break;
             case "consumer":
                 agent = new ConsumerAgent();
