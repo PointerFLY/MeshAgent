@@ -31,7 +31,7 @@ public class ConsumerAgent implements IAgent {
 
     private EtcdManager etcdManager = new EtcdManager();
     private List<Channel> clientChannels;
-    private List<Endpoint> endpoints = etcdManager.findServices();
+    private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
@@ -39,7 +39,7 @@ public class ConsumerAgent implements IAgent {
     private int requestId = 0;
     private Map<Integer, Channel> map = new HashMap<>();
     private final Object lock = new Object();
-    private LoadBalance loadBalance = new LoadBalance(endpoints);
+    private LoadBalance loadBalance;
 
     @Override
     public void start() {
@@ -78,6 +78,10 @@ public class ConsumerAgent implements IAgent {
     }
 
     private void connectToProviderAgents() {
+        endpoints = etcdManager.findServices();
+        loadBalance = new LoadBalance(endpoints);
+        clientChannels = new ArrayList<>();
+
         try {
             Bootstrap b = new Bootstrap();
             b.group(clientGroup)
@@ -93,7 +97,6 @@ public class ConsumerAgent implements IAgent {
                         }
                     });
 
-            clientChannels = new ArrayList<>();
             for (Endpoint endpoint: endpoints) {
                 ChannelFuture f = b.connect(endpoint.getHost(), endpoint.getPort()).sync();
                 f.channel().closeFuture().addListener(future -> {
