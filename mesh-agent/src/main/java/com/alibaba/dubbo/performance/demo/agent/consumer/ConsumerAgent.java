@@ -7,10 +7,10 @@ import com.alibaba.dubbo.performance.demo.agent.Options;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -33,7 +33,7 @@ public class ConsumerAgent implements IAgent {
     private List<Channel> clientChannels;
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
-    private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
+    private EventLoopGroup clientGroup = new EpollEventLoopGroup(1);
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private int requestId = 0;
@@ -85,7 +85,7 @@ public class ConsumerAgent implements IAgent {
         try {
             Bootstrap b = new Bootstrap();
             b.group(clientGroup)
-                    .channel(NioSocketChannel.class)
+                    .channel(EpollSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -114,12 +114,12 @@ public class ConsumerAgent implements IAgent {
     }
 
     private void startServer() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup(1);
+        EventLoopGroup bossGroup = new EpollEventLoopGroup(1);
+        EventLoopGroup workerGroup = new EpollEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
+                    .channel(EpollServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override

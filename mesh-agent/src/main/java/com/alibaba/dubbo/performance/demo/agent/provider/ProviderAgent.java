@@ -12,10 +12,10 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpObjectAggregator;
@@ -44,7 +44,7 @@ public class ProviderAgent implements IAgent {
     private ProviderDubboClientHandler clientHandler = new ProviderDubboClientHandler();
     private Channel clientChannel;
     private Channel serverChannel() { return serverHandler.getChannel(); }
-    private EventLoopGroup clientGroup = new NioEventLoopGroup(1);
+    private EventLoopGroup clientGroup = new EpollEventLoopGroup(1);
     private final Object lock = new Object();
     private int weight;
 
@@ -113,7 +113,7 @@ public class ProviderAgent implements IAgent {
         try {
             Bootstrap b = new Bootstrap();
             b.group(clientGroup)
-                    .channel(NioSocketChannel.class)
+                    .channel(EpollSocketChannel.class)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -138,12 +138,12 @@ public class ProviderAgent implements IAgent {
     }
 
     private void startServer() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup(1);
+        EventLoopGroup bossGroup = new EpollEventLoopGroup(1);
+        EventLoopGroup workerGroup = new EpollEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
-                    .channel(NioServerSocketChannel.class)
+                    .channel(EpollServerSocketChannel.class)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
