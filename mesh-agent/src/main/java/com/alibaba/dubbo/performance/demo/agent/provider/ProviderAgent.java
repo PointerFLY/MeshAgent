@@ -88,10 +88,11 @@ public class ProviderAgent implements IAgent {
             clientChannel.writeAndFlush(dubboRequest);
         });
         clientHandler.setReadNewResponseHandler((response) -> {
-            FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, Unpooled.wrappedBuffer(response.getBytes()));
+            response.getBytes().retain();
+            FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, response.getBytes());
             httpResponse.headers().set("content-type", "text/plain");
-            httpResponse.headers().setInt("content-length", httpResponse.content().readableBytes());
-            httpResponse.headers().set(Options.REQUEST_ID_KEY, response.getRequestId());
+            httpResponse.headers().setInt("content-length", response.getBytes().readableBytes());
+            httpResponse.headers().setInt(Options.REQUEST_ID_KEY, response.getRequestId());
             serverChannel().writeAndFlush(httpResponse);
         });
 

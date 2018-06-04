@@ -1,23 +1,29 @@
 package com.alibaba.dubbo.performance.demo.agent.dubbo.model;
 
-public class RpcResponse {
+import io.netty.buffer.ByteBuf;
 
-    private String requestId;
-    private byte[] bytes;
+public class RpcResponse extends RefResponse {
 
-    public String getRequestId() {
+    private int requestId;
+    private ByteBuf bytes;
+
+    protected void destroy() {
+        bytes.release();
+    }
+
+    public int getRequestId() {
         return requestId;
     }
 
-    public void setRequestId(String requestId) {
+    public void setRequestId(int requestId) {
         this.requestId = requestId;
     }
 
-    public byte[] getBytes() {
+    public ByteBuf getBytes() {
         return bytes;
     }
 
-    public void setBytes(byte[] bytes) {
+    public void setBytes(ByteBuf bytes) {
         this.bytes = bytes;
     }
 }
