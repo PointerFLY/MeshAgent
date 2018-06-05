@@ -6,6 +6,7 @@ public class Options {
     public static final int SERVER_PORT = Integer.valueOf(System.getProperty("server.port"));
     public static final int PROVIDER_PORT;
     public static final String ETCD_URL = System.getProperty("etcd.url");
+    public static final boolean isLinux = System.getProperty("os.name").toLowerCase().contains("linux");
 
     public static final int HTTP_MAX_CONTENT_LENGTH = 65536;
     public static final String REQUEST_ID_KEY = "request-id";

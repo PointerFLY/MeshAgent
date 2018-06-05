@@ -15,7 +15,11 @@ import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpObjectAggregator;
@@ -44,7 +48,7 @@ public class ProviderAgent implements IAgent {
     private ProviderDubboClientHandler clientHandler = new ProviderDubboClientHandler();
     private Channel clientChannel;
     private Channel serverChannel() { return serverHandler.getChannel(); }
-    private EventLoopGroup clientGroup = new EpollEventLoopGroup(1);
+    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
     private final Object lock = new Object();
     private int weight;
 
@@ -112,8 +116,9 @@ public class ProviderAgent implements IAgent {
     private void connectToProvider() {
         try {
             Bootstrap b = new Bootstrap();
+            Class<? extends SocketChannel> clazz = Options.isLinux ? EpollSocketChannel.class : NioSocketChannel.class;
             b.group(clientGroup)
-                    .channel(EpollSocketChannel.class)
+                    .channel(clazz)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -138,12 +143,13 @@ public class ProviderAgent implements IAgent {
     }
 
     private void startServer() {
-        EventLoopGroup bossGroup = new EpollEventLoopGroup(1);
-        EventLoopGroup workerGroup = new EpollEventLoopGroup(1);
+        EventLoopGroup bossGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
+            Class<? extends ServerSocketChannel> clazz = Options.isLinux ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
             b.group(bossGroup, workerGroup)
-                    .channel(EpollServerSocketChannel.class)
+                    .channel(clazz)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override

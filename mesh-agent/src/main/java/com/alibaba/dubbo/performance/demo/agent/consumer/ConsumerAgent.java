@@ -10,7 +10,11 @@ import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -33,7 +37,7 @@ public class ConsumerAgent implements IAgent {
     private List<Channel> clientChannels;
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
-    private EventLoopGroup clientGroup = new EpollEventLoopGroup(1);
+    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
     private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private int requestId = 0;
@@ -43,6 +47,7 @@ public class ConsumerAgent implements IAgent {
 
     @Override
     public void start() {
+        LOGGER.info(String.format("isLinux: %s", Options.isLinux));
         serverHandler.setReadNewRequestHandler((request, channel) -> {
             connectToProviderAgentsIfNeeded();
 
@@ -84,8 +89,9 @@ public class ConsumerAgent implements IAgent {
 
         try {
             Bootstrap b = new Bootstrap();
+            Class<? extends SocketChannel> clazz = Options.isLinux ? EpollSocketChannel.class : NioSocketChannel.class;
             b.group(clientGroup)
-                    .channel(EpollSocketChannel.class)
+                    .channel(clazz)
                     .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
@@ -114,12 +120,13 @@ public class ConsumerAgent implements IAgent {
     }
 
     private void startServer() {
-        EventLoopGroup bossGroup = new EpollEventLoopGroup(1);
-        EventLoopGroup workerGroup = new EpollEventLoopGroup(1);
+        EventLoopGroup bossGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+        EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
+            Class<? extends ServerSocketChannel> clazz = Options.isLinux ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
             b.group(bossGroup, workerGroup)
-                    .channel(EpollServerSocketChannel.class)
+                    .channel(clazz)
                     .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
