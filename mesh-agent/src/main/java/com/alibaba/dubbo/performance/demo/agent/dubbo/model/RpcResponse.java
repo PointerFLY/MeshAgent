@@ -2,20 +2,20 @@ package com.alibaba.dubbo.performance.demo.agent.dubbo.model;
 
 import io.netty.buffer.ByteBuf;
 
-public class RpcResponse extends RefResponse {
+public class RpcResponse extends Ref {
 
-    private int requestId;
+    private long requestId;
     private ByteBuf bytes;
 
     protected void destroy() {
         bytes.release();
     }
 
-    public int getRequestId() {
+    public long getRequestId() {
         return requestId;
     }
 
-    public void setRequestId(int requestId) {
+    public void setRequestId(long requestId) {
         this.requestId = requestId;
     }
 

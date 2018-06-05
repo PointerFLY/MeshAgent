@@ -4,6 +4,11 @@ import com.alibaba.dubbo.performance.demo.agent.Endpoint;
 import com.alibaba.dubbo.performance.demo.agent.EtcdManager;
 import com.alibaba.dubbo.performance.demo.agent.IAgent;
 import com.alibaba.dubbo.performance.demo.agent.Options;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.DubboRpcDecoder;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.DubboRpcEncoder;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.model.JsonUtils;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.model.RpcRequest;
+import com.alibaba.dubbo.performance.demo.agent.dubbo.model.RpcInvocation;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -15,19 +20,28 @@ import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.multipart.Attribute;
+import io.netty.handler.codec.http.multipart.HttpPostStandardRequestDecoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
-import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class ConsumerAgent implements IAgent {
 
@@ -38,10 +52,10 @@ public class ConsumerAgent implements IAgent {
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
-    private ConsumerHttpClientHandler clientHandler = new ConsumerHttpClientHandler();
+    private ConsumerDubboClientHandler clientHandler = new ConsumerDubboClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
-    private int requestId = 0;
-    private Map<Integer, Channel> map = new HashMap<>();
+    private long requestId = 0;
+    private Map<Long, Channel> map = new HashMap<>();
     private final Object lock = new Object();
     private LoadBalance loadBalance;
 
@@ -51,22 +65,51 @@ public class ConsumerAgent implements IAgent {
         serverHandler.setReadNewRequestHandler((request, channel) -> {
             connectToProviderAgentsIfNeeded();
 
-            int index = loadBalance.nextIndex();
-            Channel clientChannel = clientChannels.get(index);
+            HttpPostStandardRequestDecoder decoder = new HttpPostStandardRequestDecoder(request);
+            Attribute methodAttr = (Attribute)decoder.getBodyHttpData("method");
+            Attribute interfaceAttr = (Attribute)decoder.getBodyHttpData("interface");
+            Attribute paramTypesAttr = (Attribute)decoder.getBodyHttpData("parameterTypesString");
+            Attribute paramsAttr = (Attribute)decoder.getBodyHttpData("parameter");
 
-            request.headers().set(Options.REQUEST_ID_KEY, requestId);
+            RpcInvocation invocation = new RpcInvocation();
+            try {
+                invocation.setMethodName(methodAttr.getValue());
+                invocation.setAttachment("path", interfaceAttr.getValue());
+                invocation.setParameterTypes(paramTypesAttr.getValue());    // Dubbo内部用"Ljava/lang/String"来表示参数类型是String
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                PrintWriter writer = new PrintWriter(new OutputStreamWriter(out));
+                JsonUtils.writeObject(paramsAttr.getValue(), writer);
+                invocation.setArguments(out.toByteArray());
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(1);
+            } finally {
+                decoder.destroy();
+            }
+
+            RpcRequest rpcRequest = new RpcRequest();
+            rpcRequest.setId(requestId);
+            rpcRequest.setVersion("2.0.0");
+            rpcRequest.setTwoWay(true);
+            rpcRequest.setData(invocation);
             map.put(requestId, channel);
             requestId += 1;
 
-            ReferenceCountUtil.retain(request);
-            clientChannel.writeAndFlush(request);
+            int index = loadBalance.nextIndex();
+            Channel clientChannel = clientChannels.get(index);
+            clientChannel.writeAndFlush(rpcRequest);
         });
         clientHandler.setReadNewResponseHandler((response) -> {
-            int requestId = response.headers().getInt(Options.REQUEST_ID_KEY);
+            long requestId = response.getRequestId();
+            response.getBytes().retain();
+            FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, response.getBytes());
+            httpResponse.headers().set("content-type", "text/plain");
+            httpResponse.headers().setInt("content-length", response.getBytes().readableBytes());
+            httpResponse.headers().set(Options.REQUEST_ID_KEY, String.valueOf(requestId));
+
             Channel channel = map.get(requestId);
             map.remove(requestId);
-            ReferenceCountUtil.retain(response);
-            channel.writeAndFlush(response);
+            channel.writeAndFlush(httpResponse);
         });
 
         startServer();
@@ -97,8 +140,8 @@ public class ConsumerAgent implements IAgent {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             ChannelPipeline p = ch.pipeline();
-                            p.addLast(new HttpClientCodec());
-                            p.addLast(new HttpObjectAggregator(Options.HTTP_MAX_CONTENT_LENGTH));
+                            p.addLast(new DubboRpcDecoder());
+                            p.addLast(new DubboRpcEncoder());
                             p.addLast(clientHandler);
                         }
                     });

@@ -1,15 +1,12 @@
 package com.alibaba.dubbo.performance.demo.agent.dubbo.model;
 
-import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.ReferenceCounted;
 
-public class RefResponse implements ReferenceCounted {
+public abstract class Ref implements ReferenceCounted {
 
     private int refCount = 1;
 
-    protected void destroy() {
-
-    }
+    abstract protected void destroy();
 
     @Override
     public int refCnt() {

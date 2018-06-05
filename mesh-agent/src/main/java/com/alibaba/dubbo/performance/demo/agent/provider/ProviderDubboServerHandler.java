@@ -1,22 +1,22 @@
 package com.alibaba.dubbo.performance.demo.agent.provider;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @ChannelHandler.Sharable
-public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
+public class ProviderDubboServerHandler extends ChannelInboundHandlerAdapter {
 
     @FunctionalInterface
     public interface ReadNewRequestHandler {
-        void handle(FullHttpRequest request, Channel channel);
+        void handle(ByteBuf byteBuf, Channel channel);
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ProviderHttpServerHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProviderDubboServerHandler.class);
 
     private ReadNewRequestHandler handler;
 
@@ -36,8 +36,8 @@ public class ProviderHttpServerHandler extends SimpleChannelInboundHandler<FullH
     }
 
     @Override
-    public void channelRead0(ChannelHandlerContext ctx, FullHttpRequest request) {
-        handler.handle(request, ctx.channel());
+    public void channelRead(ChannelHandlerContext ctx, Object byteBuf) {
+        handler.handle((ByteBuf)byteBuf, ctx.channel());
     }
 
     @Override

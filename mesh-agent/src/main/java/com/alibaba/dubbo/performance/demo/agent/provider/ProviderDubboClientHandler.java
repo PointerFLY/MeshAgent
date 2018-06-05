@@ -1,19 +1,16 @@
 package com.alibaba.dubbo.performance.demo.agent.provider;
 
-import com.alibaba.dubbo.performance.demo.agent.consumer.ConsumerHttpClientHandler;
-import com.alibaba.dubbo.performance.demo.agent.dubbo.model.RpcResponse;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.FullHttpResponse;
 
 @ChannelHandler.Sharable
-public class ProviderDubboClientHandler extends SimpleChannelInboundHandler<RpcResponse> {
+public class ProviderDubboClientHandler extends ChannelInboundHandlerAdapter{
 
     @FunctionalInterface
     public interface ReadNewResponseHandler {
-        void handle(RpcResponse response);
+        void handle(ByteBuf byteBuf);
     }
 
     private ReadNewResponseHandler handler;
@@ -23,7 +20,7 @@ public class ProviderDubboClientHandler extends SimpleChannelInboundHandler<RpcR
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, RpcResponse response) {
-        handler.handle(response);
+    public void channelRead(ChannelHandlerContext ctx, Object byteBuf) {
+        handler.handle((ByteBuf)byteBuf);
     }
 }

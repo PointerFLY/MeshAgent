@@ -11,7 +11,7 @@ public class DubboRpcDecoder extends ByteToMessageDecoder {
 
     private static final int HEADER_LENGTH = 16;
 
-    private int requestId;
+    private long requestId;
     private int dataLength = 0;
 
     @Override
@@ -23,7 +23,7 @@ public class DubboRpcDecoder extends ByteToMessageDecoder {
                 }
 
                 in.readerIndex(4);
-                requestId = (int)in.readLong();
+                requestId = in.readLong();
                 dataLength = in.readInt();
                 in.discardReadBytes();
             } else {

@@ -1,9 +1,7 @@
 package com.alibaba.dubbo.performance.demo.agent.dubbo.model;
 
 
-import java.util.concurrent.atomic.AtomicLong;
-
-public class Request {
+public class RpcRequest {
     private long id;
     private String interfaceName = "com.alibaba.dubbo.performance.demo.provider.IHelloService";
     private String methodName = "hash";
