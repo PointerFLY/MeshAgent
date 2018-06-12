@@ -52,7 +52,7 @@ public class ConsumerAgent implements IAgent {
     private List<Channel> clientChannels;
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
-    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(3) : new NioEventLoopGroup(3);
+    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
     private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(3) : new NioEventLoopGroup(3);
     private ConsumerDubboClientHandler clientHandler = new ConsumerDubboClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
