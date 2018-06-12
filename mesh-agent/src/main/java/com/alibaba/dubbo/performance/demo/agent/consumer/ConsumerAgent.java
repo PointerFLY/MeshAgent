@@ -53,11 +53,11 @@ public class ConsumerAgent implements IAgent {
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(3) : new NioEventLoopGroup(3);
-    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(2) : new NioEventLoopGroup(2);
+    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(3) : new NioEventLoopGroup(3);
     private ConsumerDubboClientHandler clientHandler = new ConsumerDubboClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private long requestId = 0;
-    private ConcurrentHashMap<Long, Channel> map = new ConcurrentHashMap<>();
+    private Map<Long, Channel> map = new ConcurrentHashMap<>();
     private final Object lock = new Object();
     private LoadBalance loadBalance;
 
@@ -112,9 +112,7 @@ public class ConsumerAgent implements IAgent {
             long requestId = response.getRequestId();
             response.getBytes().retain();
             FullHttpResponse httpResponse = new DefaultFullHttpResponse(HTTP_1_1, OK, response.getBytes());
-            httpResponse.headers().set("content-type", "text/plain");
             httpResponse.headers().setInt("content-length", response.getBytes().readableBytes());
-            httpResponse.headers().set(Options.REQUEST_ID_KEY, String.valueOf(requestId));
 
             Channel channel = map.remove(requestId);
             channel.writeAndFlush(httpResponse);
