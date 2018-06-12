@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -52,10 +53,11 @@ public class ConsumerAgent implements IAgent {
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
     private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
     private ConsumerDubboClientHandler clientHandler = new ConsumerDubboClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private long requestId = 0;
-    private Map<Long, Channel> map = new HashMap<>();
+    private HashMap<Long, Channel> map = new HashMap<>();
     private final Object lock = new Object();
     private LoadBalance loadBalance;
 
@@ -87,15 +89,18 @@ public class ConsumerAgent implements IAgent {
                 decoder.destroy();
             }
 
+            long id = requestId;
+            requestId += 1;
+            int index = loadBalance.nextIndex();
+
+            map.put(id, channel);
+
             RpcRequest rpcRequest = new RpcRequest();
-            rpcRequest.setId(requestId);
             rpcRequest.setVersion("2.0.0");
             rpcRequest.setTwoWay(true);
             rpcRequest.setData(invocation);
-            map.put(requestId, channel);
-            requestId += 1;
+            rpcRequest.setId(id);
 
-            int index = loadBalance.nextIndex();
             Channel clientChannel = clientChannels.get(index);
             clientChannel.writeAndFlush(rpcRequest);
         });
@@ -107,8 +112,7 @@ public class ConsumerAgent implements IAgent {
             httpResponse.headers().setInt("content-length", response.getBytes().readableBytes());
             httpResponse.headers().set(Options.REQUEST_ID_KEY, String.valueOf(requestId));
 
-            Channel channel = map.get(requestId);
-            map.remove(requestId);
+            Channel channel = map.remove(requestId);
             channel.writeAndFlush(httpResponse);
         });
 
@@ -135,7 +139,6 @@ public class ConsumerAgent implements IAgent {
             Class<? extends SocketChannel> clazz = Options.isLinux ? EpollSocketChannel.class : NioSocketChannel.class;
             b.group(clientGroup)
                     .channel(clazz)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
@@ -164,13 +167,11 @@ public class ConsumerAgent implements IAgent {
 
     private void startServer() {
         EventLoopGroup bossGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             Class<? extends ServerSocketChannel> clazz = Options.isLinux ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
             b.group(bossGroup, workerGroup)
                     .channel(clazz)
-                    .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {

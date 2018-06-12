@@ -29,6 +29,7 @@ public class ProviderAgent implements IAgent {
     private Channel clientChannel;
     private Channel serverChannel() { return serverHandler.getChannel(); }
     private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
     private final Object lock = new Object();
     private int weight;
 
@@ -65,7 +66,6 @@ public class ProviderAgent implements IAgent {
             Class<? extends SocketChannel> clazz = Options.isLinux ? EpollSocketChannel.class : NioSocketChannel.class;
             b.group(clientGroup)
                     .channel(clazz)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
                     .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
@@ -87,14 +87,11 @@ public class ProviderAgent implements IAgent {
     }
 
     private void startServer() {
-        EventLoopGroup bossGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
         try {
             ServerBootstrap b = new ServerBootstrap();
             Class<? extends ServerSocketChannel> clazz = Options.isLinux ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
-            b.group(bossGroup, workerGroup)
+            b.group(workerGroup)
                     .channel(clazz)
-                    .handler(new LoggingHandler(LogLevel.INFO))
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
@@ -110,7 +107,6 @@ public class ProviderAgent implements IAgent {
             LOGGER.error("Start server failed.");
             System.exit(1);
         } finally {
-            bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
     }

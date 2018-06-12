@@ -34,3 +34,4 @@ Thumbs.db
 /provider-*/
 /consumer/
 /etcd/
+*.class
