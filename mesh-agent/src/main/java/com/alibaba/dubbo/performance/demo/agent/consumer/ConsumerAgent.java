@@ -52,12 +52,12 @@ public class ConsumerAgent implements IAgent {
     private List<Channel> clientChannels;
     private List<Endpoint> endpoints;
     private List<Channel> serverChannels() { return serverHandler.getChannels(); }
-    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
-    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(1) : new NioEventLoopGroup(1);
+    private EventLoopGroup clientGroup = Options.isLinux ? new EpollEventLoopGroup(3) : new NioEventLoopGroup(3);
+    private EventLoopGroup workerGroup = Options.isLinux ? new EpollEventLoopGroup(2) : new NioEventLoopGroup(2);
     private ConsumerDubboClientHandler clientHandler = new ConsumerDubboClientHandler();
     private ConsumerHttpServerHandler serverHandler = new ConsumerHttpServerHandler();
     private long requestId = 0;
-    private HashMap<Long, Channel> map = new HashMap<>();
+    private ConcurrentHashMap<Long, Channel> map = new ConcurrentHashMap<>();
     private final Object lock = new Object();
     private LoadBalance loadBalance;
 
@@ -89,9 +89,13 @@ public class ConsumerAgent implements IAgent {
                 decoder.destroy();
             }
 
-            long id = requestId;
-            requestId += 1;
-            int index = loadBalance.nextIndex();
+            long id;
+            int index;
+            synchronized (lock) {
+                id = requestId;
+                requestId += 1;
+                index = loadBalance.nextIndex();
+            }
 
             map.put(id, channel);
 
