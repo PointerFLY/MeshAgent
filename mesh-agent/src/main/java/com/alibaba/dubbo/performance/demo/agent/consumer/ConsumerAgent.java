@@ -81,6 +81,7 @@ public class ConsumerAgent implements IAgent {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(out));
                 JsonUtils.writeObject(paramsAttr.getValue(), writer);
+                JsonUtils.flush(writer);
                 invocation.setArguments(out.toByteArray());
             } catch (IOException e) {
                 e.printStackTrace();

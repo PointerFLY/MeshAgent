@@ -4,10 +4,7 @@ import com.alibaba.fastjson.serializer.JSONSerializer;
 import com.alibaba.fastjson.serializer.SerializeWriter;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 
 /**
  * @author ken.lj
@@ -21,13 +18,15 @@ public class JsonUtils {
         serializer.config(SerializerFeature.WriteEnumUsingToString, true);
         serializer.write(obj);
         out.writeTo(writer);
-        out.close(); // for reuse SerializeWriter buf
+        out.close();
         writer.println();
-        writer.flush();
     }
 
     public static void writeBytes(byte[] b, PrintWriter writer) {
         writer.print(new String(b));
+    }
+
+    public static void flush(PrintWriter writer) {
         writer.flush();
     }
 }
