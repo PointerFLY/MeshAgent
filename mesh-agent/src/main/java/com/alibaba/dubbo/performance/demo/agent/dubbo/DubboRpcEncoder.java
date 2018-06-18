@@ -22,13 +22,12 @@ public class DubboRpcEncoder extends MessageToByteEncoder {
     protected static final byte FLAG_REQUEST = (byte) 0x80;
     protected static final byte FLAG_TWOWAY = (byte) 0x40;
     protected static final byte FLAG_EVENT = (byte) 0x20;
+    protected static byte[] header = new byte[HEADER_LENGTH];
 
     @Override
     protected void encode(ChannelHandlerContext ctx, Object msg, ByteBuf buffer) throws Exception {
         RpcRequest req = (RpcRequest)msg;
 
-        // header.
-        byte[] header = new byte[HEADER_LENGTH];
         // set magic number.
         Bytes.short2bytes(MAGIC, header);
 
